@@ -18,35 +18,35 @@ class Warehouse {
     }
 
     public void addGoods(int amount) throws InterruptedException {
-        semaphore.acquire(amount); // Резервує місце для товарів
+        semaphore.acquire(amount); // Reserve space for goods
         items += amount;
         updateLabel();
-        addToHistory("Постачальник додав " + amount + " товарів.");
-        Thread.sleep(1000); // Імітація часу постачання
-        semaphore.release(amount); // Вивільняє місце
+        addToHistory("Supplier added " + amount + " items.");
+        Thread.sleep(1000); // Simulate delivery time
+        semaphore.release(amount); // Free up space
     }
 
     public void removeGoods(int amount) throws InterruptedException {
-        semaphore.acquire(amount); // Перевіряє наявність товару
+        semaphore.acquire(amount); // Check for available items
         if (items >= amount) {
             items -= amount;
             updateLabel();
-            addToHistory("Покупець забрав " + amount + " товарів.");
-            Thread.sleep(1000); // Імітація часу вилучення
+            addToHistory("Customer removed " + amount + " items.");
+            Thread.sleep(1000); // Simulate removal time
         } else {
-            addToHistory("Недостатньо товару для вилучення.");
+            addToHistory("Not enough items to remove.");
         }
-        semaphore.release(amount); // Дозволяє іншим потокам використовувати склад
+        semaphore.release(amount); // Allow other threads to use the warehouse
     }
 
     private void updateLabel() {
-        SwingUtilities.invokeLater(() -> label.setText("Товарів на складі: " + items + "/" + capacity));
+        SwingUtilities.invokeLater(() -> label.setText("Items in stock: " + items + "/" + capacity));
     }
 
     private void addToHistory(String message) {
         SwingUtilities.invokeLater(() -> {
             historyArea.append(message + "\n");
-            historyArea.setCaretPosition(historyArea.getDocument().getLength()); // Прокрутка до кінця
+            historyArea.setCaretPosition(historyArea.getDocument().getLength()); // Scroll to the end
         });
     }
 }
@@ -64,10 +64,10 @@ class Supplier implements Runnable {
             while (true) {
                 int amount = (int) (Math.random() * 10) + 1;
                 warehouse.addGoods(amount);
-                Thread.sleep(2000); // Затримка між постачанням
+                Thread.sleep(2000); // Delay between deliveries
             }
         } catch (InterruptedException e) {
-            System.out.println("Постачальник зупинений.");
+            System.out.println("Supplier stopped.");
         }
     }
 }
@@ -75,7 +75,7 @@ class Supplier implements Runnable {
 class Consumer implements Runnable {
     private final Warehouse warehouse;
     private final JLabel statusLabel;
-    private int simulatedHour = 0; // Початкове значення симульованої години
+    private int simulatedHour = 0; // Initial value of the simulated hour
 
     public Consumer(Warehouse warehouse, JLabel statusLabel) {
         this.warehouse = warehouse;
@@ -89,26 +89,26 @@ class Consumer implements Runnable {
                 if (isWorkingHours(simulatedHour)) {
                     int amount = (int) (Math.random() * 5) + 1;
                     warehouse.removeGoods(amount);
-                    setStatus("Покупець активно купує товар. Час: " + simulatedHour + ":00");
+                    setStatus("Customer actively buying items. Time: " + simulatedHour + ":00");
                 } else {
-                    setStatus("Неробочі години. Покупець чекає. Час: " + simulatedHour + ":00");
+                    setStatus("Non-working hours. Customer is waiting. Time: " + simulatedHour + ":00");
                 }
 
-                // Додаємо 5 годин за кожну ітерацію
+                // Add 5 hours for each iteration
                 simulatedHour += 5;
                 if (simulatedHour >= 24) {
-                    simulatedHour -= 24; // Повертаємо в діапазон 0-23
+                    simulatedHour -= 24; // Wrap around in the range 0-23
                 }
 
-                Thread.sleep(3000); // Затримка між покупками
+                Thread.sleep(3000); // Delay between purchases
             }
         } catch (InterruptedException e) {
-            System.out.println("Покупець зупинений.");
+            System.out.println("Customer stopped.");
         }
     }
 
     private boolean isWorkingHours(int hour) {
-        return hour >= 9 && hour < 18; // Робочі години з 9 до 18
+        return hour >= 9 && hour < 18; // Working hours from 9 to 18
     }
 
     private void setStatus(String status) {
@@ -118,54 +118,54 @@ class Consumer implements Runnable {
 
 public class VisualDemo {
     public static void main(String[] args) {
-        // Створюємо вікно для відображення стану
-        JFrame frame = new JFrame("Візуальна демонстрація складу");
+        // Create a window to display the status
+        JFrame frame = new JFrame("Warehouse Visual Demo");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(500, 300);
 
-        // Панель для відображення кількості товарів
-        JLabel itemLabel = new JLabel("Товарів на складі: 0/100");
+        // Panel to display the number of items
+        JLabel itemLabel = new JLabel("Items in stock: 0/100");
         itemLabel.setHorizontalAlignment(SwingConstants.CENTER);
         itemLabel.setFont(new Font("Arial", Font.PLAIN, 18));
 
-        // Панель для відображення статусу покупця
-        JLabel statusLabel = new JLabel("Статус покупця");
+        // Panel to display the customer's status
+        JLabel statusLabel = new JLabel("Customer Status");
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 16));
 
-        // Текстове поле для відображення історії операцій
+        // Text area to display the history of operations
         JTextArea historyArea = new JTextArea(10, 30);
         historyArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(historyArea);
 
-        // Розміщуємо елементи на панелі
+        // Arrange the elements on the panel
         frame.setLayout(new BorderLayout());
         frame.add(itemLabel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(statusLabel, BorderLayout.SOUTH);
 
-        // Ініціалізуємо склад
+        // Initialize the warehouse
         Warehouse warehouse = new Warehouse(100, itemLabel, historyArea);
 
-        // Створюємо потоки постачальника і покупця
+        // Create supplier and consumer threads
         Thread supplierThread = new Thread(new Supplier(warehouse));
         Thread consumerThread = new Thread(new Consumer(warehouse, statusLabel));
 
-        // Запускаємо потоки
+        // Start the threads
         supplierThread.start();
         consumerThread.start();
 
-        // Відображаємо вікно
+        // Display the window
         frame.setVisible(true);
 
-        // Імітуємо роботу протягом 60 секунд
+        // Simulate operation for 60 seconds
         try {
             Thread.sleep(60000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        // Зупиняємо потоки
+        // Stop the threads
         supplierThread.interrupt();
         consumerThread.interrupt();
     }
